@@ -1,0 +1,29 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: api-server
+        containerPath: /etc/kubernetes/api-server
+  - role: worker
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/control-plane-flags/
+kubeadmConfigPatches:
+  - |
+    kind: ClusterConfiguration
+    networking:
+      serviceSubnet: "10.96.0.0/16"
+      podSubnet: "10.244.0.0/24"
+      dnsDomain: "cluster.local"
+    apiServer:
+      extraVolumes:
+      - name: api-server
+        hostPath: /etc/kubernetes/api-server
+        mountPath: /etc/kubernetes/api-server
+      extraArgs:
+        authentication-token-webhook-config-file: /etc/kubernetes/api-server/auth-webhook.conf
+        authentication-token-webhook-cache-ttl: 30s
+        authentication-token-webhook-version: v1
+        authorization-mode: Node,RBAC,Webhook
+        authorization-webhook-version: v1
+        authorization-webhook-config-file: /etc/kubernetes/api-server/authz-webhook.conf
+        feature-gates: "EphemeralContainers=true"

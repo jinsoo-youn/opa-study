@@ -1,0 +1,49 @@
+{{- if .Values.rbac.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: {{ template "opa.name" . }}
+    chart: {{ template "opa.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    component: mgmt
+  name: {{ template "opa.mgmtfullname" . }}
+rules:
+  # Inject user-provided RBAC rules
+  {{- with .Values.rbac.extraRules }}
+  {{ . | toYaml | nindent 2 }}
+  {{- end }}
+
+  # Allow kube-mgmt to have "get", "list" and "watch" actions over ConfigMaps at a cluster level
+  # to allow loading policies from any namespace.
+  # Additionally, allow "patch" and "update" actionson ConfigMaps so kube-mgmt can
+  # annotate the ConfigMaps to indicate if they were loaded successfully or not.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: {{ template "opa.name" . }}
+    chart: {{ template "opa.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    component: mgmt
+  name: {{ template "opa.mgmtfullname" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ template "opa.mgmtfullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "opa.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
